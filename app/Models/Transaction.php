@@ -9,6 +9,7 @@ class Transaction extends Model
     protected $fillable = [
         'user_id',
         'plan_id',
+        'dispatchers',
         'amount',
         'status',
         'bambora_profile_id',
