@@ -44,7 +44,7 @@
                     @foreach ($plans as $plan)
                         @php
                             $per = $plan->frequency === 'Monthly' ? 'month' : 'year';
-                            $basePrice = $plan->price; // Price per dispatcher
+                            $basePrice = $plan->sale_price ?? $plan->price; // Price per dispatcher
                         @endphp
 
                         <div class="col-lg-4 col-md-6 mb-4">

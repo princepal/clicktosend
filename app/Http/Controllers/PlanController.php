@@ -86,7 +86,10 @@ class PlanController extends Controller
      */
     public function subscribe(Request $request, Plan $plan)
     {
-        $dispatchers = $request->query('dispatchers', 1);
+        $dispatchers = (int) $request->input(
+            'dispatchers',
+            $request->query('dispatchers', session()->getOldInput('dispatchers', 1))
+        );
 
         $user = Auth::user();
         if (!$user) {
@@ -104,7 +107,10 @@ class PlanController extends Controller
             'expiry_year' => 'required',
             'cvd' => 'required',
             'name' => 'required',
+            'dispatchers' => 'required|integer|min:1',
         ]);
+
+        $dispatchers = (int) $data['dispatchers'];
 
         $now = Carbon::now();
         $baseStartDate = $now;
@@ -171,9 +177,10 @@ class PlanController extends Controller
             }
 
             // 3. Create recurring billing
+            $amount = ($plan->sale_price ?? $plan->price) * $dispatchers;
             $recurring = $bambora->createRecurringBilling(
                 $profile['customer_code'],
-                $plan->sale_price ?? $plan->price,
+                $amount,
                 strtolower($plan->frequency)
             );
 
@@ -188,6 +195,7 @@ class PlanController extends Controller
             if ($existingPlan) {
                 $existingPlan->update([
                     'plan_id' => $plan->id,
+                    'dispatchers' => $dispatchers,
                     'start_date' => $baseStartDate,
                     'end_date' => $endDate,
                     'status' => 'active',
@@ -198,6 +206,7 @@ class PlanController extends Controller
                 UserPlan::create([
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
+                    'dispatchers' => $dispatchers,
                     'start_date' => $baseStartDate,
                     'end_date' => $endDate,
                     'status' => 'active',
@@ -210,7 +219,8 @@ class PlanController extends Controller
             Transaction::create([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
-                'amount' => $plan->sale_price ?? $plan->price,
+                'dispatchers' => $dispatchers,
+                'amount' => $amount,
                 'status' => 'success',
                 'bambora_profile_id' => $profile['customer_code'],
                 'bambora_recurring_id' => $recurring['id'],
@@ -218,7 +228,10 @@ class PlanController extends Controller
                 'response' => json_encode($recurring),
             ]);
 
-            return redirect()->route('plans.index')->with('success', 'You have successfully subscribed to the ' . $plan->frequency . ' plan!');
+            return redirect()->route('plans.index')->with(
+                'success',
+                'You have successfully subscribed to the ' . $plan->frequency . ' plan for ' . $dispatchers . ' dispatcher(s)!'
+            );
         } catch (\Exception $e) {
             $message = $e->getMessage();
             if (method_exists($e, 'getResponse') && $e->getResponse()) {

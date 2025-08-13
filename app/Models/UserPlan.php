@@ -12,6 +12,7 @@ class UserPlan extends Model
     protected $fillable = [
         'user_id',
         'plan_id',
+        'dispatchers',
         'start_date',
         'end_date',
         'status',

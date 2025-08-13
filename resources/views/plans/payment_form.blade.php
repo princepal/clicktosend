@@ -1,4 +1,8 @@
 <x-app-layout>
+    @php
+        $perDispatcher = $plan->sale_price ?? $plan->price;
+        $total = $perDispatcher * $dispatchers;
+    @endphp
     <style>
         /* Payment specific styles */
         .payment-card {
@@ -124,6 +128,7 @@
                                 <form id="paymentForm" method="POST"
                                     action="{{ route('plans.subscribe', $plan->id) }}">
                                     @csrf
+                                    <input type="hidden" name="dispatchers" value="{{ old('dispatchers', $dispatchers) }}">
                                     <!-- Card Information -->
                                     <div class="mb-4">
                                         <h6 class="mb-3">Card Information</h6>
@@ -192,7 +197,7 @@
                                         <button type="submit" class="btn btn-primary btn-lg" id="payButton">
                                             <span class="loading-spinner me-2" id="loadingSpinner"></span>
                                             <i class="bi bi-lock me-2"></i>
-                                            Pay {{ number_format($plan->price * $dispatchers, 2) }}
+                                            Pay {{ number_format($total, 2) }}
                                         </button>
                                     </div>
                                 </form>
@@ -224,8 +229,8 @@
                             <h5 class="mb-3">Order Summary</h5>
 
                             <div class="summary-item">
-                                <span>Pro Plan</span>
-                                <span>{{ $plan->formatted_price }}</span>
+                                <span>{{ $plan->plan_name }}</span>
+                                <span>${{ number_format($perDispatcher, 2) }}</span>
                             </div>
                             <div class="summary-item">
                                 <span>Dispatchers</span>
@@ -238,7 +243,7 @@
 
                             <div class="summary-item summary-total">
                                 <span>Total</span>
-                                <span>{{ number_format($plan->price * $dispatchers, 2) }}</span>
+                                <span>{{ number_format($total, 2) }}</span>
                             </div>
 
                             <hr class="my-3">
