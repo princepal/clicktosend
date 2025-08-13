@@ -96,8 +96,16 @@ class PlanController extends Controller
             return redirect()->route('login')->with('error', 'You must be logged in to subscribe to a plan.');
         }
 
+        $existingPlan = UserPlan::where('user_id', $user->id)
+            ->latest('start_date')
+            ->first();
+        $existingDispatchers = 0;
+        if ($existingPlan && Carbon::parse($existingPlan->end_date)->isFuture()) {
+            $existingDispatchers = $existingPlan->dispatchers;
+        }
+
         if ($request->isMethod('get')) {
-            return view('plans.payment_form', compact('plan', 'dispatchers'));
+            return view('plans.payment_form', compact('plan', 'dispatchers', 'existingDispatchers'));
         }
 
         // 1. Validate card input
@@ -114,7 +122,7 @@ class PlanController extends Controller
 
         $now = Carbon::now();
         $baseStartDate = $now;
-        $endDate = $now;
+        $endDate = $now->copy();
         $baseDurationDays = 0;
 
         // Determine duration based on plan_id
@@ -130,12 +138,17 @@ class PlanController extends Controller
                 break;
         }
 
-        $existingPlan = UserPlan::where('user_id', $user->id)
-            ->latest('start_date')
-            ->first();
-
-        if ($existingPlan && $existingPlan->end_date && Carbon::parse($existingPlan->end_date)->isFuture()) {
-            $endDate = Carbon::parse($existingPlan->end_date)->addDays($baseDurationDays);
+        $amount = ($plan->sale_price ?? $plan->price) * $dispatchers;
+        if ($existingPlan && Carbon::parse($existingPlan->end_date)->isFuture()) {
+            $baseStartDate = Carbon::parse($existingPlan->start_date);
+            $endDate = Carbon::parse($existingPlan->end_date);
+            $additional = $dispatchers - $existingDispatchers;
+            if ($additional <= 0) {
+                return back()->with('error', 'Please enter more dispatchers than your current plan.')->withInput();
+            }
+            $amount = $additional * ($plan->sale_price ?? $plan->price);
+        } else {
+            $endDate = $now->copy()->addDays($baseDurationDays);
         }
 
         $bambora = new BamboraService();
@@ -177,7 +190,6 @@ class PlanController extends Controller
             }
 
             // 3. Create recurring billing
-            $amount = ($plan->sale_price ?? $plan->price) * $dispatchers;
             $recurring = $bambora->createRecurringBilling(
                 $profile['customer_code'],
                 $amount,

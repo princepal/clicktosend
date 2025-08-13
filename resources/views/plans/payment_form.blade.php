@@ -1,7 +1,9 @@
 <x-app-layout>
     @php
         $perDispatcher = $plan->sale_price ?? $plan->price;
-        $total = $perDispatcher * $dispatchers;
+        $existingDispatchers = $existingDispatchers ?? 0;
+        $additionalDispatchers = max(0, $dispatchers - $existingDispatchers);
+        $total = $perDispatcher * $additionalDispatchers;
     @endphp
     <style>
         /* Payment specific styles */
@@ -233,8 +235,12 @@
                                 <span>${{ number_format($perDispatcher, 2) }}</span>
                             </div>
                             <div class="summary-item">
-                                <span>Dispatchers</span>
-                                <span>{{ $dispatchers }}</span>
+                                <span>Current Dispatchers</span>
+                                <span>{{ $existingDispatchers }}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Additional Dispatchers</span>
+                                <span>{{ $additionalDispatchers }}</span>
                             </div>
                             {{-- <div class="summary-item">
                                 <span>Tax</span>
